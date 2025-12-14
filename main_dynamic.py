@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import requests
 from datetime import datetime
 import time
+import numpy as np  # Added for safer math
 
 # Configuration
 RAPP_URL = "http://192.168.8.35:5000"
@@ -14,8 +15,18 @@ IPERF_BITRATE = 200  # Mbps - target bitrate for all tests
 IPERF_DURATION = 10
 PERF_DURATION = 15
 
-# Test matrix - iterative configurations
+# Test matrix - As provided in your latest file
 TEST_SCENARIOS = [
+    {
+        "test_id": "P29",
+        "oru": "pegatron",
+        "branch": "starlingx/pegatron",
+        "T1a_cp_dl": {"min": 285, "max": 429},
+        "T1a_cp_ul": {"min": 285, "max": 429},
+        "T1a_up": {"min": 125, "max": 350},
+        "Ta4": {"min": 110, "max": 180},
+        "runs": 1
+    },
     {
         "test_id": "P30",
         "oru": "pegatron",
@@ -36,70 +47,37 @@ TEST_SCENARIOS = [
         "Ta4": {"min": 110, "max": 280},
         "runs": 1
     },
+    {
+        "test_id": "P32",
+        "oru": "liteon",
+        "branch": "starlingx/liteon",
+        "T1a_cp_dl": {"min": 285, "max": 429},
+        "T1a_cp_ul": {"min": 285, "max": 429},
+        "T1a_up": {"min": 125, "max": 350},
+        "Ta4": {"min": 110, "max": 180},
+        "runs": 1
+    },
+    {
+        "test_id": "P33",
+        "oru": "liteon",
+        "branch": "starlingx/liteon",
+        "T1a_cp_dl": {"min": 285, "max": 470},
+        "T1a_cp_ul": {"min": 285, "max": 429},
+        "T1a_up": {"min": 125, "max": 350},
+        "Ta4": {"min": 110, "max": 180},
+        "runs": 1
+    },
+    {
+        "test_id": "P34",
+        "oru": "liteon",
+        "branch": "starlingx/liteon",
+        "T1a_cp_dl": {"min": 285, "max": 550},
+        "T1a_cp_ul": {"min": 285, "max": 429},
+        "T1a_up": {"min": 125, "max": 350},
+        "Ta4": {"min": 110, "max": 280},
+        "runs": 1
+    }
 ]
-
-# TEST_SCENARIOS = [
-#     {
-#         "test_id": "P28",
-#         "oru": "liteon",
-#         "branch": "starlingx/liteon",
-#         "T1a_cp_dl": {"min": 285, "max": 470},
-#         "T1a_cp_ul": {"min": 285, "max": 429},
-#         "T1a_up": {"min": 125, "max": 350},
-#         "Ta4": {"min": 110, "max": 180},
-#         "runs": 10
-#     },
-#     {
-#         "test_id": "P29",
-#         "oru": "liteon",
-#         "branch": "starlingx/liteon",
-#         "T1a_cp_dl": {"min": 285, "max": 550},
-#         "T1a_cp_ul": {"min": 285, "max": 429},
-#         "T1a_up": {"min": 125, "max": 350},
-#         "Ta4": {"min": 110, "max": 280},
-#         "runs": 10
-#     },
-#     {
-#         "test_id": "P30",
-#         "oru": "pegatron",
-#         "branch": "starlingx/pegatron",
-#         "T1a_cp_dl": {"min": 285, "max": 470},
-#         "T1a_cp_ul": {"min": 285, "max": 429},
-#         "T1a_up": {"min": 125, "max": 350},
-#         "Ta4": {"min": 110, "max": 180},
-#         "runs": 10
-#     },
-#     {
-#         "test_id": "P31",
-#         "oru": "pegatron",
-#         "branch": "starlingx/pegatron",
-#         "T1a_cp_dl": {"min": 285, "max": 550},
-#         "T1a_cp_ul": {"min": 285, "max": 429},
-#         "T1a_up": {"min": 125, "max": 350},
-#         "Ta4": {"min": 110, "max": 280},
-#         "runs": 10
-#     },
-#     {
-#         "test_id": "P32",
-#         "oru": "jura",
-#         "branch": "starlingx/jura",
-#         "T1a_cp_dl": {"min": 285, "max": 470},
-#         "T1a_cp_ul": {"min": 285, "max": 429},
-#         "T1a_up": {"min": 125, "max": 350},
-#         "Ta4": {"min": 110, "max": 180},
-#         "runs": 10
-#     },
-#     {
-#         "test_id": "P33",
-#         "oru": "jura",
-#         "branch": "starlingx/jura",
-#         "T1a_cp_dl": {"min": 285, "max": 550},
-#         "T1a_cp_ul": {"min": 285, "max": 429},
-#         "T1a_up": {"min": 125, "max": 350},
-#         "Ta4": {"min": 110, "max": 280},
-#         "runs": 10
-#     }
-# ]
 
 def build_gnb_config(scenario):
     """Build gNB deployment config for given scenario"""
@@ -135,7 +113,6 @@ def deploy_gnb(config):
     """Deploy gNB via rApp (which forwards to NFO)"""
     print(f"  Deploying gNB...")
     try:
-        # rApp endpoint that forwards to NFO
         resp = requests.post(f"{RAPP_URL}/nfo/deploy", json=config, timeout=120)
         if resp.status_code == 200:
             data = resp.json()
@@ -153,7 +130,6 @@ def terminate_gnb(deployment_id):
     """Terminate gNB via rApp"""
     print(f"  Terminating gNB {deployment_id}...")
     try:
-        # rApp endpoint that forwards to NFO
         resp = requests.post(f"{NFO_URL}/api/o2dms/v2/deployments/{deployment_id}/terminate/", timeout=60)
         if resp.status_code == 200:
             print("    ✓ Terminated")
@@ -175,8 +151,6 @@ def check_ue_status():
             print(status)
             attached = status.get('attached', False)
             has_data_ip = status.get('data_ip') is not None
-            signal = status.get('signal', {})
-
             return attached and has_data_ip, status
         else:
             return False, None
@@ -190,7 +164,6 @@ def get_ptp_status():
         resp = requests.get(f"{RAPP_URL}/sideload/{INSTANCE_ID}/ptp_status", timeout=10)
         if resp.status_code == 200:
             data = resp.json()
-            # Parse PTP offset to get RMS
             offset = data.get('ptp_offset', '0')
             try:
                 ptp_rms = abs(float(offset))
@@ -206,11 +179,9 @@ def get_ptp_status():
 def check_fh_connection():
     """Check fronthaul connection status"""
     try:
-        # Check gNB logs for FH connection
         resp = requests.get(f"{RAPP_URL}/gnb/logs", timeout=10)
         if resp.status_code == 200:
             logs = resp.text
-            # Look for FH connection indicators
             connected = "FH connection established" in logs or "O-RU connected" in logs
             return connected
         else:
@@ -260,7 +231,6 @@ def fetch_thread_cpu():
     """Fetch thread CPU data during test"""
     print("  Fetching thread CPU data...")
     try:
-        # Use the working endpoint format from document 48
         resp = requests.post(
             f"{RAPP_URL}/sideload/measure/thread_cpu",
             json={
@@ -274,96 +244,13 @@ def fetch_thread_cpu():
             return resp.json()
         else:
             print(f"    ✗ thread_cpu failed: {resp.status_code}")
-            print(f"    Response: {resp.text[:200]}")  # Debug output
             return None
     except Exception as e:
         print(f"    ✗ thread_cpu error: {e}")
         return None
 
-
-def run_single_test(scenario, run_number, timestamp):
-    """Execute single test run WITH profiling"""
-    print(f"\n  Run #{run_number + 1}/{scenario['runs']}")
-
-    # Toggle airplane mode
-    toggle_airplane_mode()
-
-    # Check UE attachment
-    attached, ue_status = check_ue_status()
-    if not attached:
-        print("    ✗ UE not attached")
-        return {
-            'run': run_number + 1,
-            'status': 'UE_NOT_ATTACHED'
-        }
-
-    signal = ue_status.get('signal', {})
-
-    if signal == None:
-        toggle_airplane_mode()
-        time.sleep(5)
-
-    print(f"    UE: RSRP={signal.get('rsrp')} dBm, RSRQ={signal.get('rsrq')} dB, SINR={signal.get('sinr')} dB")
-
-    # Get PTP status
-    ptp_rms = get_ptp_status()
-    print(f"    PTP RMS: {ptp_rms} ns" if ptp_rms else "    PTP: N/A")
-
-    # Check FH connection
-    fh_connected = check_fh_connection()
-    print(f"    FH Connected: {fh_connected}")
-
-    # Start iperf in background and measure CPU during traffic
-    print("    Starting iperf with CPU profiling...")
-    iperf_result = run_iperf_test()
-
-    # Measure thread CPU DURING traffic
-    time.sleep(1)  # Let traffic stabilize
-    cpu_data = fetch_thread_cpu()
-
-    if iperf_result:
-        print(f"    Throughput: {iperf_result['throughput_mbps']:.2f} Mbps")
-        print(f"    Jitter: {iperf_result['jitter_ms']:.3f} ms")
-        print(f"    Loss: {iperf_result['lost_percent']:.2f}%")
-
-    # Save per-run data
-    if cpu_data:
-        run_file = f"{scenario['test_id']}_run{run_number + 1}_{timestamp}.json"
-        with open(run_file, 'w') as f:
-            json.dump({
-                'cpu_data': cpu_data,
-                'iperf_result': iperf_result,
-                'ue_status': ue_status,
-                'ptp_rms_ns': ptp_rms,
-                'fh_connected': fh_connected
-            }, f, indent=2)
-
-        # Generate per-run heatmaps
-        generate_plots(
-            cpu_data,
-            f"{scenario['test_id']}_R{run_number + 1}",
-            timestamp,
-            iperf_result,
-            ue_status
-        )
-
-    return {
-        'run': run_number + 1,
-        'status': 'SUCCESS',
-        'throughput_mbps': iperf_result['throughput_mbps'] if iperf_result else None,
-        'jitter_ms': iperf_result['jitter_ms'] if iperf_result else None,
-        'lost_percent': iperf_result['lost_percent'] if iperf_result else None,
-        'ptp_rms_ns': ptp_rms,
-        'fh_connected': fh_connected,
-        'ue_rsrp': signal.get('rsrp'),
-        'ue_rsrq': signal.get('rsrq'),
-        'ue_sinr': signal.get('sinr'),
-        'cpu_data': cpu_data  # Include for aggregation
-    }
-
 def generate_plots(data, test_label, timestamp, iperf_result, ue_status):
     """Generate CPU profiling heatmaps only - per run"""
-
     # CPU usage heatmap
     df = pd.DataFrame(data['threads'])
     df['tid_numeric'] = pd.to_numeric(df['tid'])
@@ -437,50 +324,121 @@ def generate_plots(data, test_label, timestamp, iperf_result, ue_status):
         print(f"  Saved {affinity_file}")
         plt.close()
 
+def run_single_test(scenario, run_number, timestamp):
+    """Execute single test run. If signal is missing, skip iperf and record 0."""
+    print(f"\n  Run #{run_number + 1}/{scenario['runs']}")
+
+    # 1. Toggle Airplane Mode
+    toggle_airplane_mode()
+
+    # 2. Check Attachment
+    attached, ue_status = check_ue_status()
+
+    # 3. Safe Signal Extraction
+    signal = ue_status.get('signal') if ue_status else None
+
+    # Retry once if attached but no signal
+    if attached and signal is None:
+        print("    ! Attached but no signal reporting. Waiting 5s...")
+        time.sleep(5)
+        _, ue_status = check_ue_status()
+        signal = ue_status.get('signal') if ue_status else None
+
+    # 4. "No Signal" Logic
+    if not attached or signal is None:
+        print("    ! NO SIGNAL DETECTED. Skipping traffic test.")
+        return {
+            'run': run_number + 1,
+            'status': 'NO_SIGNAL',
+            'throughput_mbps': 0.0,
+            'jitter_ms': 0.0,
+            'lost_percent': 0.0,
+            'ptp_rms_ns': get_ptp_status(),
+            'fh_connected': check_fh_connection(),
+            'ue_rsrp': None,
+            'ue_rsrq': None,
+            'ue_sinr': None,
+            'cpu_data': None
+        }
+
+    # 5. Normal Execution
+    print(f"    UE: RSRP={signal.get('rsrp')} dBm, RSRQ={signal.get('rsrq')} dB, SINR={signal.get('sinr')} dB")
+
+    ptp_rms = get_ptp_status()
+    print(f"    PTP RMS: {ptp_rms} ns" if ptp_rms else "    PTP: N/A")
+
+    fh_connected = check_fh_connection()
+
+    print("    Starting iperf with CPU profiling...")
+    iperf_result = run_iperf_test()
+
+    time.sleep(1)
+    cpu_data = fetch_thread_cpu()
+
+    if iperf_result:
+        print(f"    Throughput: {iperf_result['throughput_mbps']:.2f} Mbps")
+
+    # Save per-run data
+    if cpu_data:
+        run_file = f"{scenario['test_id']}_run{run_number + 1}_{timestamp}.json"
+        with open(run_file, 'w') as f:
+            json.dump({
+                'cpu_data': cpu_data,
+                'iperf_result': iperf_result,
+                'ue_status': ue_status
+            }, f, indent=2)
+        generate_plots(cpu_data, f"{scenario['test_id']}_R{run_number + 1}", timestamp, iperf_result, ue_status)
+
+    return {
+        'run': run_number + 1,
+        'status': 'SUCCESS',
+        'throughput_mbps': iperf_result['throughput_mbps'] if iperf_result else 0.0,
+        'jitter_ms': iperf_result['jitter_ms'] if iperf_result else 0.0,
+        'lost_percent': iperf_result['lost_percent'] if iperf_result else 0.0,
+        'ptp_rms_ns': ptp_rms,
+        'fh_connected': fh_connected,
+        'ue_rsrp': signal.get('rsrp'),
+        'ue_rsrq': signal.get('rsrq'),
+        'ue_sinr': signal.get('sinr'),
+        'cpu_data': cpu_data
+    }
+
 def run_test_scenario(scenario, timestamp):
     """Execute full test scenario with multiple runs"""
     test_id = scenario['test_id']
-    oru = scenario['oru'].upper()
-
     print(f"\n{'='*70}")
-    print(f"Test {test_id}: {oru} O-RU")
-    print(f"T1a_cp_dl: ({scenario['T1a_cp_dl']['min']}, {scenario['T1a_cp_dl']['max']}) ns")
-    print(f"Ta4: ({scenario['Ta4']['min']}, {scenario['Ta4']['max']}) ns")
+    print(f"Test {test_id}: {scenario['oru'].upper()} O-RU")
+    print(f"T1a_cp_dl: {scenario['T1a_cp_dl']}")
     print(f"{'='*70}")
 
-    # Build and deploy gNB
     gnb_config = build_gnb_config(scenario)
     deployment_id = deploy_gnb(gnb_config)
 
     if not deployment_id:
         print(f"  ✗ Deployment failed, skipping {test_id}")
-        return None
+        return {'test_id': scenario['test_id'], 'oru': scenario['oru'].upper(), 'successful_runs': 0}
 
-    # Wait for gNB stabilization
     print("  Waiting 30s for gNB stabilization...")
     time.sleep(30)
 
     run_results = []
     try:
         for run_num in range(scenario['runs']):
-            result = run_single_test(scenario, run_num, timestamp)  # Pass timestamp
+            result = run_single_test(scenario, run_num, timestamp)
             run_results.append(result)
-
             if run_num < scenario['runs'] - 1:
                 time.sleep(3)
-
     finally:
         terminate_gnb(deployment_id)
 
-    # Calculate statistics INCLUDING signal metrics
-    successful_runs = [r for r in run_results if r['status'] == 'SUCCESS' and r['throughput_mbps'] is not None]
+    # Calculate statistics using numpy for safety
+    valid_runs = [r for r in run_results if r['status'] in ['SUCCESS', 'NO_SIGNAL']]
 
-    if successful_runs:
-        throughputs = [r['throughput_mbps'] for r in successful_runs]
-        ptp_values = [r['ptp_rms_ns'] for r in successful_runs if r['ptp_rms_ns'] is not None]
-        rsrp_values = [r['ue_rsrp'] for r in successful_runs if r['ue_rsrp'] is not None]
-        rsrq_values = [r['ue_rsrq'] for r in successful_runs if r['ue_rsrq'] is not None]
-        sinr_values = [r['ue_sinr'] for r in successful_runs if r['ue_sinr'] is not None]
+    if valid_runs:
+        def safe_mean(key):
+            # Only count values that are not None
+            vals = [r[key] for r in valid_runs if r.get(key) is not None]
+            return np.mean(vals) if vals else None
 
         stats = {
             'test_id': scenario['test_id'],
@@ -488,246 +446,155 @@ def run_test_scenario(scenario, timestamp):
             'T1a_cp_dl': scenario['T1a_cp_dl'],
             'Ta4': scenario['Ta4'],
             'total_runs': scenario['runs'],
-            'successful_runs': len(successful_runs),
-            'avg_throughput_mbps': sum(throughputs) / len(throughputs),
-            'min_throughput_mbps': min(throughputs),
-            'max_throughput_mbps': max(throughputs),
-            'std_throughput_mbps': pd.Series(throughputs).std(),
-            'avg_ptp_rms_ns': sum(ptp_values) / len(ptp_values) if ptp_values else None,
-            'avg_rsrp_dbm': sum(rsrp_values) / len(rsrp_values) if rsrp_values else None,
-            'avg_rsrq_db': sum(rsrq_values) / len(rsrq_values) if rsrq_values else None,
-            'avg_sinr_db': sum(sinr_values) / len(sinr_values) if sinr_values else None,
-            'fh_connected': any(r.get('fh_connected') for r in successful_runs),
+            'successful_runs': len(valid_runs),
+            'avg_throughput_mbps': np.mean([r['throughput_mbps'] for r in valid_runs]),
+            'avg_jitter_ms': np.mean([r['jitter_ms'] for r in valid_runs]),
+            'avg_loss_percent': np.mean([r['lost_percent'] for r in valid_runs]),
+            'avg_ptp_rms_ns': safe_mean('ptp_rms_ns'),
+            'avg_rsrp_dbm': safe_mean('ue_rsrp'),
+            'avg_rsrq_db': safe_mean('ue_rsrq'),
+            'avg_sinr_db': safe_mean('ue_sinr'),
+            'fh_connected': any(r.get('fh_connected') for r in valid_runs),
             'raw_results': run_results
         }
-
     else:
         stats = {
             'test_id': scenario['test_id'],
             'oru': scenario['oru'].upper(),
-            'total_runs': scenario['runs'],
             'successful_runs': 0,
             'raw_results': run_results
         }
 
-    # Save scenario results
+    # Save results
     result_file = f'results_{scenario["test_id"]}_{timestamp}.json'
     with open(result_file, 'w') as f:
         json.dump(stats, f, indent=2)
-    print(f"\n  ✓ Saved {result_file}")
 
     return stats
 
-
-
 def generate_summary_report(all_results, timestamp):
-    """Generate comprehensive test report"""
+    """Generate comprehensive test report with Stacked CPU Breakdown"""
 
-    # Create summary DataFrame
-    summary_data = []
-    for result in all_results:
-        if result:
-            summary_data.append({
-                'Test ID': result['test_id'],
-                'O-RU': result['oru'],
-                'T1a_cp_dl (ns)': result['T1a_cp_dl'],
-                'Ta4 (ns)': result['Ta4'],
-                'Runs': f"{result['successful_runs']}/{result['total_runs']}",
-                'DL (Mbps)': f"{result['avg_throughput_mbps']:.2f}" if result.get('avg_throughput_mbps') else "N/A",
-                'PTP RMS (ns)': f"{result['avg_ptp_rms_ns']:.2f}" if result.get('avg_ptp_rms_ns') else "N/A",
-                'FH Connected': "Yes" if result.get('fh_connected') else "No"
-            })
+    # --- 1. Filter Valid Results ---
+    valid_results = [r for r in all_results if r and 'test_id' in r]
+    if not valid_results:
+        print("No valid results to report.")
+        return
 
-    df = pd.DataFrame(summary_data)
+    # --- 2. Prepare Data for Stacked CPU Chart ---
+    # We need a DataFrame where Index=TestID, Columns=ThreadNames, Values=AvgCPU
+    cpu_breakdown = {}
 
-    # Print summary table
-    print("\n" + "="*100)
-    print("TEST SUMMARY")
-    print("="*100)
-    print(df.to_string(index=False))
-    print("="*100)
+    for r in valid_results:
+        test_id = r['test_id']
+        cpu_breakdown[test_id] = {}
 
-    # Save summary
-    summary_file = f'test_summary_{timestamp}.csv'
-    df.to_csv(summary_file, index=False)
-    print(f"\n✓ Summary saved to {summary_file}")
+        # Aggregate thread usage across all runs for this test
+        if r.get('raw_results'):
+            thread_totals = {}
+            run_count = 0
 
+            for run in r['raw_results']:
+                if run.get('cpu_data') and run['cpu_data'].get('threads'):
+                    run_count += 1
+                    for t in run['cpu_data']['threads']:
+                        # Use thread name as key (strip numeric IDs if needed)
+                        t_name = t['name']
+                        # Simple sum for now, will divide by run_count later
+                        thread_totals[t_name] = thread_totals.get(t_name, 0) + t['avg_cpu']
+
+            # Calculate average per thread across runs
+            if run_count > 0:
+                for name, total in thread_totals.items():
+                    cpu_breakdown[test_id][name] = total / run_count
+
+    # Convert to DataFrame
+    df_cpu = pd.DataFrame.from_dict(cpu_breakdown, orient='index').fillna(0)
+
+    # Filter: Keep top 8 threads, group rest into "Others" to prevent clutter
+    if not df_cpu.empty:
+        top_threads = df_cpu.sum().nlargest(8).index
+        df_cpu['Others'] = df_cpu.loc[:, ~df_cpu.columns.isin(top_threads)].sum(axis=1)
+        df_cpu = df_cpu[list(top_threads) + ['Others']]
+
+    # --- 3. Generate Visualizations ---
     fig = plt.figure(figsize=(20, 14))
-    gs = fig.add_gridspec(3, 3, hspace=0.35, wspace=0.3)
+    gs = fig.add_gridspec(3, 3, hspace=0.45, wspace=0.3)
 
-    valid_results = [r for r in all_results if r and r.get('avg_throughput_mbps')]
-
-    # Prepare data
     test_ids = [r['test_id'] for r in valid_results]
     colors = ['#1f77b4' if 'LITEON' in r['oru'] else '#ff7f0e' if 'PEGATRON' in r['oru'] else '#2ca02c' for r in valid_results]
 
-    # Row 1: Performance Metrics
-    # Throughput
-    ax1 = fig.add_subplot(gs[0, 0])
-    throughputs = [r['avg_throughput_mbps'] for r in valid_results]
-    bars1 = ax1.bar(test_ids, throughputs, color=colors, alpha=0.7)
-    ax1.set_ylabel('Throughput (Mbps)', fontsize=11, fontweight='bold')
-    ax1.set_title('DL Throughput', fontsize=12, fontweight='bold')
-    ax1.grid(axis='y', alpha=0.3)
-    for bar, val in zip(bars1, throughputs):
-        height = bar.get_height()
-        ax1.text(bar.get_x() + bar.get_width()/2., height + 5, f'{val:.1f}',
-                ha='center', va='bottom', fontsize=9)
+    # Helper for standard bars
+    def plot_metric(ax, data, title, ylabel, unit_label=""):
+        bars = ax.bar(test_ids, data, color=colors, alpha=0.7)
+        ax.set_title(title, fontweight='bold', fontsize=11)
+        ax.set_ylabel(ylabel, fontweight='bold', fontsize=10)
+        ax.grid(axis='y', alpha=0.3)
 
-    # Jitter
-    ax2 = fig.add_subplot(gs[0, 1])
-    jitter_results = [r for r in valid_results if r.get('raw_results')]
-    if jitter_results:
-        jitter_avgs = []
-        for r in jitter_results:
-            jitters = [run.get('jitter_ms') for run in r['raw_results'] if run.get('jitter_ms')]
-            jitter_avgs.append(sum(jitters)/len(jitters) if jitters else 0)
-        bars2 = ax2.bar([r['test_id'] for r in jitter_results], jitter_avgs,
-                       color=[colors[valid_results.index(r)] for r in jitter_results], alpha=0.7)
-        ax2.set_ylabel('Jitter (ms)', fontsize=11, fontweight='bold')
-        ax2.set_title('Average Jitter', fontsize=12, fontweight='bold')
-        ax2.grid(axis='y', alpha=0.3)
-        for bar, val in zip(bars2, jitter_avgs):
-            height = bar.get_height()
-            ax2.text(bar.get_x() + bar.get_width()/2., height + 0.001, f'{val:.3f}',
-                    ha='center', va='bottom', fontsize=9)
+        for i, (bar, val) in enumerate(zip(bars, data)):
+            is_no_signal = valid_results[i].get('avg_rsrp_dbm') is None
+            if is_no_signal:
+                ax.text(bar.get_x() + bar.get_width()/2., 0, 'No Signal',
+                        ha='center', va='bottom', fontsize=8, color='red', rotation=90)
+            elif val is not None:
+                y_pos = val if val > 0 else 0
+                if val < 0: y_pos = val
+                ax.text(bar.get_x() + bar.get_width()/2., y_pos, f'{val:.1f}{unit_label}',
+                        ha='center', va='bottom' if val>0 else 'top', fontsize=9)
 
-    # Packet Loss
-    ax3 = fig.add_subplot(gs[0, 2])
-    loss_results = [r for r in valid_results if r.get('raw_results')]
-    if loss_results:
-        loss_avgs = []
-        for r in loss_results:
-            losses = [run.get('lost_percent') for run in r['raw_results'] if run.get('lost_percent') is not None]
-            loss_avgs.append(sum(losses)/len(losses) if losses else 0)
-        bars3 = ax3.bar([r['test_id'] for r in loss_results], loss_avgs,
-                       color=[colors[valid_results.index(r)] for r in loss_results], alpha=0.7)
-        ax3.set_ylabel('Packet Loss (%)', fontsize=11, fontweight='bold')
-        ax3.set_title('Average Packet Loss', fontsize=12, fontweight='bold')
-        ax3.grid(axis='y', alpha=0.3)
-        for bar, val in zip(bars3, loss_avgs):
-            height = bar.get_height()
-            ax3.text(bar.get_x() + bar.get_width()/2., height + 0.01, f'{val:.2f}',
-                    ha='center', va='bottom', fontsize=9)
+    # Row 1
+    plot_metric(fig.add_subplot(gs[0, 0]), [r.get('avg_throughput_mbps', 0) for r in valid_results], 'DL Throughput', 'Mbps')
 
-    # Row 2: Signal Quality Metrics
-    # RSRP
-    ax4 = fig.add_subplot(gs[1, 0])
-    rsrp_results = [r for r in valid_results if r.get('avg_rsrp_dbm')]
-    if rsrp_results:
-        rsrp_values = [r['avg_rsrp_dbm'] for r in rsrp_results]
-        bars4 = ax4.bar([r['test_id'] for r in rsrp_results], rsrp_values,
-                       color=[colors[valid_results.index(r)] for r in rsrp_results], alpha=0.7)
-        ax4.set_ylabel('RSRP (dBm)', fontsize=11, fontweight='bold')
-        ax4.set_title('Average RSRP', fontsize=12, fontweight='bold')
-        ax4.grid(axis='y', alpha=0.3)
-        for bar, val in zip(bars4, rsrp_values):
-            height = bar.get_height()
-            ax4.text(bar.get_x() + bar.get_width()/2., height + 1, f'{val:.0f}',
-                    ha='center', va='bottom', fontsize=9)
+    jitter_vals = [r.get('avg_jitter_ms', 0) if r.get('avg_jitter_ms') is not None else 0 for r in valid_results]
+    plot_metric(fig.add_subplot(gs[0, 1]), jitter_vals, 'Average Jitter', 'ms')
 
-    # RSRQ
-    ax5 = fig.add_subplot(gs[1, 1])
-    rsrq_results = [r for r in valid_results if r.get('avg_rsrq_db')]
-    if rsrq_results:
-        rsrq_values = [r['avg_rsrq_db'] for r in rsrq_results]
-        bars5 = ax5.bar([r['test_id'] for r in rsrq_results], rsrq_values,
-                       color=[colors[valid_results.index(r)] for r in rsrq_results], alpha=0.7)
-        ax5.set_ylabel('RSRQ (dB)', fontsize=11, fontweight='bold')
-        ax5.set_title('Average RSRQ', fontsize=12, fontweight='bold')
-        ax5.grid(axis='y', alpha=0.3)
-        for bar, val in zip(bars5, rsrq_values):
-            height = bar.get_height()
-            ax5.text(bar.get_x() + bar.get_width()/2., height + 0.5, f'{val:.0f}',
-                    ha='center', va='bottom', fontsize=9)
+    loss_vals = [r.get('avg_loss_percent', 0) if r.get('avg_loss_percent') is not None else 0 for r in valid_results]
+    plot_metric(fig.add_subplot(gs[0, 2]), loss_vals, 'Packet Loss', '%', '%')
 
-    # SINR
-    ax6 = fig.add_subplot(gs[1, 2])
-    sinr_results = [r for r in valid_results if r.get('avg_sinr_db')]
-    if sinr_results:
-        sinr_values = [r['avg_sinr_db'] for r in sinr_results]
-        bars6 = ax6.bar([r['test_id'] for r in sinr_results], sinr_values,
-                       color=[colors[valid_results.index(r)] for r in sinr_results], alpha=0.7)
-        ax6.set_ylabel('SINR (dB)', fontsize=11, fontweight='bold')
-        ax6.set_title('Average SINR', fontsize=12, fontweight='bold')
-        ax6.grid(axis='y', alpha=0.3)
-        for bar, val in zip(bars6, sinr_values):
-            height = bar.get_height()
-            ax6.text(bar.get_x() + bar.get_width()/2., height + 0.3, f'{val:.1f}',
-                    ha='center', va='bottom', fontsize=9)
+    # Row 2
+    rsrp_vals = [r.get('avg_rsrp_dbm', 0) if r.get('avg_rsrp_dbm') is not None else 0 for r in valid_results]
+    plot_metric(fig.add_subplot(gs[1, 0]), rsrp_vals, 'Average RSRP', 'dBm')
 
-    # Row 3: System Metrics
-    # PTP RMS
-    ax7 = fig.add_subplot(gs[2, 0])
-    ptp_results = [r for r in valid_results if r.get('avg_ptp_rms_ns')]
-    if ptp_results:
-        ptp_values = [r['avg_ptp_rms_ns'] for r in ptp_results]
-        bars7 = ax7.bar([r['test_id'] for r in ptp_results], ptp_values,
-                       color=[colors[valid_results.index(r)] for r in ptp_results], alpha=0.7)
-        ax7.set_ylabel('PTP RMS (ns)', fontsize=11, fontweight='bold')
-        ax7.set_xlabel('Test ID', fontsize=11)
-        ax7.set_title('PTP Synchronization', fontsize=12, fontweight='bold')
+    rsrq_vals = [r.get('avg_rsrq_db', 0) if r.get('avg_rsrq_db') is not None else 0 for r in valid_results]
+    plot_metric(fig.add_subplot(gs[1, 1]), rsrq_vals, 'Average RSRQ', 'dB')
+
+    sinr_vals = [r.get('avg_sinr_db', 0) if r.get('avg_sinr_db') is not None else 0 for r in valid_results]
+    plot_metric(fig.add_subplot(gs[1, 2]), sinr_vals, 'Average SINR', 'dB')
+
+    # Row 3 - METRIC 7: STACKED CPU BREAKDOWN (The new chart)
+    ax7 = fig.add_subplot(gs[2, 1])
+    if not df_cpu.empty:
+        # Plot stacked bar
+        df_cpu.plot(kind='bar', stacked=True, ax=ax7, colormap='tab20', width=0.7)
+        ax7.set_title('CPU Usage Breakdown by Thread', fontweight='bold', fontsize=11)
+        ax7.set_ylabel('CPU Usage (%)', fontweight='bold', fontsize=10)
+        ax7.set_xlabel('Test ID', fontsize=10)
+        ax7.legend(loc='upper center', bbox_to_anchor=(0.5, -0.25), ncol=3, fontsize=8)
         ax7.grid(axis='y', alpha=0.3)
-        for bar, val in zip(bars7, ptp_values):
-            height = bar.get_height()
-            ax7.text(bar.get_x() + bar.get_width()/2., height + 0.5, f'{val:.1f}',
-                    ha='center', va='bottom', fontsize=9)
+        plt.setp(ax7.xaxis.get_majorticklabels(), rotation=0)
+    else:
+        ax7.text(0.5, 0.5, 'No CPU Data', ha='center', va='center')
 
-    # Average CPU Usage
-    ax8 = fig.add_subplot(gs[2, 1])
-    cpu_results = [r for r in valid_results if r.get('raw_results')]
-    if cpu_results:
-        cpu_avgs = []
-        for r in cpu_results:
-            cpu_values = []
-            for run in r['raw_results']:
-                if run.get('cpu_data') and run['cpu_data'].get('threads'):
-                    avg_cpu = sum(t['avg_cpu'] for t in run['cpu_data']['threads']) / len(run['cpu_data']['threads'])
-                    cpu_values.append(avg_cpu)
-            cpu_avgs.append(sum(cpu_values)/len(cpu_values) if cpu_values else 0)
-        bars8 = ax8.bar([r['test_id'] for r in cpu_results], cpu_avgs,
-                       color=[colors[valid_results.index(r)] for r in cpu_results], alpha=0.7)
-        ax8.set_ylabel('CPU Usage (%)', fontsize=11, fontweight='bold')
-        ax8.set_xlabel('Test ID', fontsize=11)
-        ax8.set_title('Average CPU Usage', fontsize=12, fontweight='bold')
-        ax8.grid(axis='y', alpha=0.3)
-        for bar, val in zip(bars8, cpu_avgs):
-            height = bar.get_height()
-            ax8.text(bar.get_x() + bar.get_width()/2., height + 2, f'{val:.1f}',
-                    ha='center', va='bottom', fontsize=9)
+    # Row 3 - PTP
+    ptp_vals = [r.get('avg_ptp_rms_ns', 0) if r.get('avg_ptp_rms_ns') is not None else 0 for r in valid_results]
+    plot_metric(fig.add_subplot(gs[2, 0]), ptp_vals, 'PTP RMS', 'ns')
 
-    # Parameter Table
+    # Row 3 - Table
     ax9 = fig.add_subplot(gs[2, 2])
-    ax9.axis('tight')
     ax9.axis('off')
-
-    param_table_data = []
+    table_data = []
     for r in valid_results:
-        param_table_data.append([
+        t1 = r.get('T1a_cp_dl', {})
+        t4 = r.get('Ta4', {})
+        table_data.append([
             r['test_id'],
             r['oru'],
-            f"({r['T1a_cp_dl']['min']},{r['T1a_cp_dl']['max']})",
-            f"({r['Ta4']['min']},{r['Ta4']['max']})"
+            f"({t1.get('min')},{t1.get('max')})",
+            f"({t4.get('min')},{t4.get('max')})"
         ])
 
-    table = ax9.table(cellText=param_table_data,
-                     colLabels=['Test', 'O-RU', 'T1a_cp_dl', 'Ta4'],
-                     cellLoc='center',
-                     loc='center',
-                     colWidths=[0.15, 0.2, 0.3, 0.3])
-    table.auto_set_font_size(False)
-    table.set_fontsize(9)
-    table.scale(1, 2)
-    ax9.set_title('Timing Parameters (ns)', fontsize=12, fontweight='bold')
-
-    # Add legend
-    from matplotlib.patches import Patch
-    legend_elements = [
-        Patch(facecolor='#1f77b4', alpha=0.7, label='LiteON'),
-        Patch(facecolor='#ff7f0e', alpha=0.7, label='Pegatron'),
-        Patch(facecolor='#2ca02c', alpha=0.7, label='Jura')
-    ]
-    fig.legend(handles=legend_elements, loc='upper right', fontsize=11)
+    table = ax9.table(cellText=table_data, colLabels=['Test', 'O-RU', 'T1a_cp_dl', 'Ta4'], loc='center')
+    table.scale(1, 1.5)
 
     plt.suptitle(f'O-RAN Timing Window Test Results - {timestamp}', fontsize=16, fontweight='bold')
 
@@ -735,6 +602,11 @@ def generate_summary_report(all_results, timestamp):
     plt.savefig(plot_file, dpi=150, bbox_inches='tight')
     print(f"✓ Consolidated results plot saved to {plot_file}")
     plt.close()
+
+    # Also save the breakdown to CSV for deep dive
+    breakdown_file = f'cpu_breakdown_{timestamp}.csv'
+    df_cpu.to_csv(breakdown_file)
+    print(f"✓ CPU Breakdown saved to {breakdown_file}")
 
 def main():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -752,11 +624,9 @@ def main():
         result = run_test_scenario(scenario, timestamp)
         all_results.append(result)
 
-        # Pause between scenarios
         print("\n  Waiting 10s before next scenario...")
         time.sleep(10)
 
-    # Generate summary report
     generate_summary_report(all_results, timestamp)
 
     print(f"\n{'='*70}")

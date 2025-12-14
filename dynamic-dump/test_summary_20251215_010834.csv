@@ -1,0 +1,7 @@
+Test ID,O-RU,T1a_cp_dl (ns),Ta4 (ns),Runs,DL (Mbps),PTP RMS (ns),FH Connected
+P29,PEGATRON,"{'min': 285, 'max': 429}","{'min': 110, 'max': 180}",1/1,199.99,N/A,No
+P30,PEGATRON,"{'min': 285, 'max': 470}","{'min': 110, 'max': 180}",1/1,199.99,N/A,No
+P31,PEGATRON,"{'min': 285, 'max': 550}","{'min': 110, 'max': 280}",1/1,200.00,N/A,No
+P32,PEGATRON,"{'min': 285, 'max': 429}","{'min': 110, 'max': 180}",1/1,199.99,N/A,No
+P33,LITEON,"{'min': 285, 'max': 470}","{'min': 110, 'max': 180}",1/1,N/A,N/A,No
+P34,LITEON,"{'min': 285, 'max': 550}","{'min': 110, 'max': 280}",1/1,N/A,N/A,No
